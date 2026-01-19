@@ -1,32 +1,61 @@
-# Proiect: Detectia si orientarea obiectelor utilizand YOLO si Libtorch
+#  YOLOv8 Object Detection & Orientation Estimation with LibTorch
 
-## 1. Scopul proiectului
-Scopul acestui proiect este implementarea unui sistem care detecteaza obiecte intr-o imagine si determina orientarea fiecarui obiect, utilizand modele YOLO pre-antrenate si retele neuronale realizate in PyTorch, ulterior exportate in Libtorch pentru integrare in C.
+Acest proiect implementează un sistem avansat de viziune artificială capabil să detecteze vehicule în imagini și să le estimeze orientarea (unghiul) folosind un pipeline secvențial bazat pe **YOLOv8**, **TensorRT** și **LibTorch (C++)**.
 
----
 
-## 2. Etapele proiectului
-
-### Etapa 1: Detectia obiectelor
-- Se utilizeaza un model **YOLO** (ex. YOLOv5 sau YOLOv12 disponibil pe GitHub) pentru detectarea obiectelor din imagini.  
-- Nu este necesara antrenarea modelului, deoarece YOLO ofera deja modele pre-antrenate pentru detectia generala.  
-- Rularea modelului se face in **Python**, iar rezultatele (bounding boxes) se exporta prin **Libtorch**.
-
-### Etapa 2: Determinarea orientarii obiectelor
-- Pentru fiecare obiect detectat, se determina **orientarea** acestuia.  
-- Orientarea se obtine printr-o retea neuronala simpla antrenata in **PyTorch** pe orientari discrete.  
-- Modelul se exporta ulterior in **Libtorch** pentru utilizare in C.
-
-### Etapa 3: Afisarea rezultatelor
-- Se afiseaza o imagine alba pe care sunt desenate **dreptunghiurile orientate** corespunzator obiectelor detectate.  
-- Nu se utilizeaza LiDAR, proiectii 3D sau plasarea obiectelor in scena.  
-- Implementarea finala se face in **C**, folosind biblioteca **Libtorch**.
 
 ---
 
-## 3. Rezumat functional
-Proiectul contine doua componente principale:
-1. Detectia obiectelor – realizata cu YOLO.  
-2. Estimarea orientarii – realizata printr-o retea neuronala PyTorch.  
+##  1. Scopul Proiectului
+Obiectivul principal este determinarea orientării obiectelor detectate fără a utiliza senzori LiDAR. Sistemul funcționează în doi pași:
+1.  **Detecție:** Localizarea vehiculelor folosind YOLOv8.
+2.  **Clasificare Unghi:** Estimarea orientării printr-o rețea neuronală secundară antrenată să recunoască 8 sectoare de unghi (0°, 45°, 90°, etc.).
 
-Rezultatul final este o imagine cu obiectele detectate si orientate, reprezentate prin dreptunghiuri.
+---
+
+##  2. Arhitectura Tehnică & Etape
+
+### Etapa 1: Detecția Obiectelor
+- Utilizăm **YOLOv8** (pre-antrenat pe dataset-ul COCO).
+- Modelul a fost convertit din `.pt` în formatul **TensorRT (.engine)** pentru a maximiza performanța pe GPU (NVIDIA GTX/Jetson).
+
+### Etapa 2: Determinarea Orientării
+- Am antrenat o rețea neuronală de clasificare în **PyTorch** folosind dataset-ul **KITTI**.
+- Rețeaua a fost exportată via **TorchScript** pentru a fi încărcată nativ în C++.
+- Folosim **Distribution Focal Loss (DFL)** pentru a rafina predicția unghiulară.
+
+### Etapa 3: Integrare C++ & Afișare
+- Pipeline-ul este scris integral în **C++17**.
+- Rezultatele sunt procesate cu **OpenCV** pentru desenarea dreptunghiurilor orientate și a etichetelor de clasă.
+
+
+
+---
+
+##  3. Rezultate și Performanță
+Sistemul a fost testat comparativ pe un set de 1598 de imagini (NVIDIA GTX 1650):
+
+| Configurație | Timp Mediu (ms) | FPS Mediu |
+| :--- | :--- | :--- |
+| Python (PyTorch Native) | 40.65 | 24.60 |
+| **LibTorch (C++)** | **51.21** | **19.52** |
+| TensorRT (.engine) | 65.58 | 15.25 |
+
+---
+
+##  4. Instalare și Compilare
+
+### Cerințe de sistem
+- **OS:** Windows 10/11 sau Linux (Jetson Orin Nano)
+- **Compiler:** MSVC (Visual Studio 2019/2022) sau GCC
+- **Biblioteci:**
+  - OpenCV 4.x
+  - LibTorch (Varianta CUDA pentru GPU)
+  - TensorRT (pentru modelele .engine)
+
+### Pași pentru Build (CMake)
+1. Configurează căile către LibTorch și OpenCV în `CMakeLists.txt`.
+2. Creează folderul de build:
+   ```bash
+   mkdir build && cd build
+   cmake ..
